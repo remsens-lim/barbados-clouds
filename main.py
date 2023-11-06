@@ -14,7 +14,7 @@ class CloudProcessor:
 
     def filter_out_haze_echos(self, input_cloudnet, input_radar):
         radar        = ma.masked_invalid(input_radar).mask
-        haze_mask    = ma.masked_where(input_cloudnet==11, input_cloudnet).mask#.astype(int)
+        haze_mask    = ma.masked_where(input_cloudnet > 10, input_cloudnet).mask#.astype(int)
         radar_masked = ma.masked_where(haze_mask == True,radar ).filled(True)
         return radar_masked
 
@@ -22,12 +22,21 @@ class CloudProcessor:
         data =  xr.open_dataset(input_path, engine='netcdf4')
         time = data.time
         ####### Dimension needs to be reduced when height dimension can not be divided by 4 ##########
-        target_classification_new = data.target_classification_new.data[:,:-1]
-        target_classification_old = data.target_classification.data[:,:-1]
-        cbh    = data.cbh.data
-        Tw     = data.Tw.data[:,:-1]
-        height = data.height.data[:-1]
-        Ze = data.Ze.data[:,:-1]
+        if data.target_classification_new.data.shape[1] % 4 == 0:
+            target_classification_new = data.target_classification_new.data[:,:]
+            target_classification_old = data.target_classification.data[:,:]
+            cbh    = data.cbh.data
+            Tw     = data.Tw.data[:,:]
+            height = data.height.data[:]
+            Ze     = data.Ze.data[:,:]
+        else:
+            number = data.target_classification_new.data.shape[1]
+            target_classification_new = data.target_classification_new.data[:,:- (number % 4)]
+            target_classification_old = data.target_classification.data[:,:- (number % 4)]
+            cbh    = data.cbh.data
+            Tw     = data.Tw.data[:,:- (number % 4)]
+            height = data.height.data[:- (number % 4)]
+            Ze     = data.Ze.data[:,:- (number % 4)]
         ##### Filter out Haze echos #####
         return  data, target_classification_new,  target_classification_old, time, Tw, height, Ze, cbh
 
@@ -46,10 +55,16 @@ class CloudProcessor:
         '''
 
         lab_image = measure.label(~input_radar.T, connectivity=1)
+
+
+
         Scc , Dcc , Str , Str_Cu, CNs ,Cir ,Ncc ,mix = fc.detect_clouds(lab_image ,
                                                                      input_temperature,
                                                                      input_height,
+                                                                     input_cloudnet,
                                                                      input_cloud_base_height)
+
+
 
         ## CNs clouds are often connected to Scc , Dcc
         CNs_labeled = fc.separate_connected_clouds(CNs)
@@ -59,7 +74,7 @@ class CloudProcessor:
                                                                                                        input_cloud_base_height,
                                                                                                        input_cloudnet)
 
-        CNs = _2_CNs+_2_Cir+_2_mix+ fall_streaks
+        CNs = _2_CNs+_2_Cir+_2_mix+ fall_streaks + mix
         CNs = np.where(CNs == 0, CNs, 5)
         ### some pixels are lost during the watershed separation, dilation will add pixels to cloud edges
         CNs_dilated = ndimage.binary_dilation(CNs, structure=np.ones((8, 8)))
@@ -79,8 +94,24 @@ class CloudProcessor:
         Str    = np.where(Str    == 0, Str, 3)
         Str_Cu = np.where(Str_Cu == 0, Str_Cu, 4)
         Ncc    = np.where(Ncc == 0, Ncc, 7)
-        Scc_Dcc =  Scc + Dcc + Ncc + Str + Cir + CNs+  Str_Cu + mix
+        Scc_Dcc =  Scc + Dcc + Ncc + Str + Cir + CNs+  Str_Cu #+ mix
         Scc_Dcc = np.where(Scc_Dcc < 9, Scc_Dcc, 0)
+
+        #objects = measure.regionprops(lab_image[:300,:800])
+        ##
+        ### Filter based on area or other criteria
+        #filtered_objects = [obj for obj in objects if obj.area > 2]
+        #import matplotlib.pyplot as plt
+        #fig, ax = plt.subplots(figsize=(20, 5))
+        #ax.pcolormesh(CNs[:300,:800], cmap='gray')
+        #for obj in filtered_objects:
+        #    minr, minc, maxr, maxc = obj.bbox
+        #    ax.plot([minc, minc, maxc, maxc, minc], [minr, maxr, maxr, minr, minr], 'r', linewidth=2)
+        ##plt.gca().invert_yaxis()
+
+        #plt.show()
+
+
 
         allclouds = fc.get_clouds_filtered(Scc_Dcc, input_radar, input_cloudnet , input_temperature)
 

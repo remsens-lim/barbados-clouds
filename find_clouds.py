@@ -8,16 +8,13 @@ import numpy.ma as ma
 
 def separate_connected_clouds(cloud_type):
     # Load your binary image (binary_dilated) here
-    # CNs shape: (605, 2880)
-    # Downsample the image
+    # Downsample the image (needs to be dividable by 4)
     scale_factor = 4  # Adjust this value as needed
     downsampled_image = cv2.resize(cloud_type, None, fx=1/scale_factor, fy=1/scale_factor, interpolation=cv2.INTER_NEAREST)
-    distance = ndimage.distance_transform_edt(downsampled_image)
-    # Find local maxima
+    #downsampled_image shape (151, 720)
     # Calculate distance transform
-    #downsampled_image_dilated = ndimage.binary_dilation(downsampled_image, structure=np.ones((2, 2)))
     downsampled_image = ndimage.binary_dilation(downsampled_image, structure=np.ones((2,2)))
-    distance = ndimage.distance_transform_edt(downsampled_image)
+    distance          = ndimage.distance_transform_edt(downsampled_image)
 
     # Find local maxima
     coords = peak_local_max(distance, footprint=np.ones((1, 2)), labels=downsampled_image.astype(int))
@@ -41,7 +38,7 @@ def separate_connected_clouds(cloud_type):
     return lab_image
 
 
-def detect_clouds(lab_image , model_temp, height, cloud_base_height):
+def detect_clouds(lab_image , model_temp, height, target_classification_new, cloud_base_height):
 
     properties = ['label','coords', 'area','area_bbox', 'bbox','axis_major_length','axis_minor_length','extent','perimeter']
     table = measure.regionprops_table(lab_image, properties = properties)
@@ -53,8 +50,10 @@ def detect_clouds(lab_image , model_temp, height, cloud_base_height):
     length_t1    = table['bbox-1']
     input_labels = table['label']
     size         = table['area']
+    height_t2 = table['bbox-2']
+    height_t1 = table['bbox-0']
 
-
+    cloudnet = target_classification_new
     cbh = cloud_base_height
    # cbh_4 = ma.masked_where(cbh > 4000, cbh).filled(np.nan)
     cbh_1 = ma.masked_where(cbh > 1000, cbh).filled(0)
@@ -71,7 +70,6 @@ def detect_clouds(lab_image , model_temp, height, cloud_base_height):
     output_Cir = []
     output_CNs = []
     output_mixed = []
-    output_Dcc_Str = []
 
     # Loop through clouds and classify them
     for i in range(len(base_h)):
@@ -81,6 +79,12 @@ def detect_clouds(lab_image , model_temp, height, cloud_base_height):
         cbh1 = np.count_nonzero(ma.masked_invalid(cbh_1[length_t1[i]:length_t2[i]]))
         cbh2 = np.count_nonzero(ma.masked_invalid(cbh_2[length_t1[i]:length_t2[i]]))
         cbh_diff = cbh2- cbh1
+
+        # Cloudnet target classification for the area of the bounding box
+        target  = cloudnet[length_t1[i]:length_t2[i],height_t1[i]:height_t2[i]]
+        target = ma.masked_where(target > 3, target).filled(0)
+        # Drizzle percentage of target (no clear sky)
+        drizzle = np.sum(target==2)*100/(ma.masked_where(target == 0, target ).compressed().shape[0])
 
         trade_inversion1 = 2500
 
@@ -94,6 +98,14 @@ def detect_clouds(lab_image , model_temp, height, cloud_base_height):
         condition_Cir      = (base_h[i] >= t0_idx-1)  & ( top_h[i] > t0_idx)
         condition_CNs      = (base_h[i] < LCL)     & ( top_h[i] > t0_idx)
         condition_mixed    = (LCL < base_h[i] < t0_idx)     & ( top_h[i] >= t0_idx)
+
+        if condition_Str:
+           # Check if Stratus (Str) are fallstreaks
+           if drizzle == 100:
+               condition_Str = False
+               condition_mixed = True
+           else:
+               condition_Str = True
 
         # Append output labels based on classification
         output_Scc.append(input_labels[i] * condition_Scc)

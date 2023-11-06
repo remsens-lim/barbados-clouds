@@ -1,8 +1,8 @@
 from main import CloudProcessor
 
-input_data = 'PATH'
+input_data  = 'PATH'
 output_data = 'PATH'
-plot_data = 'PATH'
+plot_data   = 'PATH'
 
 cloud_processor = CloudProcessor(file_path = input_data,
                                  dataset_path = output_data,
