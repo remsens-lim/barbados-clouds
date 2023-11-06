@@ -66,6 +66,8 @@ class CloudProcessor:
 
 
 
+
+
         ## CNs clouds are often connected to Scc , Dcc
         CNs_labeled = fc.separate_connected_clouds(CNs)
         _2_Scc , _2_Dcc , _2_Str , _2_Str_Cu, _2_CNs ,_2_Cir ,_2_Ncc ,_2_mix,fall_streaks = fc.detect_NCs(CNs_labeled ,
@@ -82,6 +84,11 @@ class CloudProcessor:
         CNs_o = ~(~CNs_dilated| input_radar.T )
         CNs = ma.masked_where(CNs_o == True, CNs_o).astype(int).filled(5)
 
+        #### dilation sometimes involves that cloud parts from near by located clouds are included for CN-clouds #######
+        CNs_mask    = ma.masked_where(CNs ==0, CNs).mask
+        Str_Cu_mask = ma.masked_where(Str_Cu==0, Str_Cu).mask
+        CNs = ma.masked_where( ( CNs_mask   | ~Str_Cu_mask)== True, CNs).filled(0)
+
         ### connect Dcc cloud-parts that were accidently separated
         Scc    = Scc +_2_Scc
         Dcc    = Dcc +_2_Dcc
@@ -96,6 +103,8 @@ class CloudProcessor:
         Ncc    = np.where(Ncc == 0, Ncc, 7)
         Scc_Dcc =  Scc + Dcc + Ncc + Str + Cir + CNs+  Str_Cu #+ mix
         Scc_Dcc = np.where(Scc_Dcc < 9, Scc_Dcc, 0)
+
+
 
         allclouds = fc.get_clouds_filtered(Scc_Dcc, input_radar, input_cloudnet , input_temperature)
 
