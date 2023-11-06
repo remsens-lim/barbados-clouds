@@ -235,7 +235,7 @@ def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classifi
 
         condition_Scc      = (top_h[i] < t0_idx) & (400 < base_h[i] < LCL)  & ( top_h[i] < trade_inversion1)  & (cbh1 > 1)& ((np.nanmean(cbh1) - base_h[i]) < 100)
         condition_Str      = (top_h[i] <= t0_idx) &(LCL <= base_h[i] <= t0_idx)     & (drizzle < 60) #& (percentages[i]< 40)
-        condition_fall_streaks = (top_h[i] <= t0_idx) &(LCL <= base_h[i] <= t0_idx) & (drizzle > 60) #& (percentages[i]> 40)
+        condition_fall_streaks = (top_h[i] <= t0_idx) &( base_h[i] <= t0_idx) & (drizzle > 60) #& (percentages[i]> 40)
 
         condition_Str_Cu   = (top_h[i] < t0_idx) &(base_h[i] < LCL)  & (LCL< top_h[i] < t0_idx) & (cbh_diff >1)
         no_class           = (top_h[i] < t0_idx) &(size[i] <= 2 )
