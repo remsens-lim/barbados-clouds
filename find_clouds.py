@@ -94,7 +94,7 @@ def detect_clouds(lab_image , model_temp, height, target_classification_new, clo
         condition_Str      = (top_h[i] <= t0_idx) &(LCL <= base_h[i] < t0_idx)
         condition_Str_Cu   = (top_h[i] < t0_idx) &(base_h[i] <= LCL)  & (LCL<= top_h[i] < t0_idx) & (cbh_diff >1)
         no_class           = (top_h[i] < t0_idx) &(size[i] <= 2 )
-        condition_Dcc      = (LCL < top_h[i] < t0_idx) & (base_h[i] < 300) & (cbh_diff < 1)
+        condition_Dcc      = (LCL < top_h[i] < t0_idx) & (base_h[i] < 300) & (cbh_diff <= 1)
         condition_Cir      = (base_h[i] >= t0_idx-1)  & ( top_h[i] > t0_idx)
         condition_CNs      = (base_h[i] < LCL)     & ( top_h[i] > t0_idx)
         condition_mixed    = (LCL < base_h[i] < t0_idx)     & ( top_h[i] >= t0_idx)
