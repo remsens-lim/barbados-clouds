@@ -97,22 +97,6 @@ class CloudProcessor:
         Scc_Dcc =  Scc + Dcc + Ncc + Str + Cir + CNs+  Str_Cu #+ mix
         Scc_Dcc = np.where(Scc_Dcc < 9, Scc_Dcc, 0)
 
-        #objects = measure.regionprops(lab_image[:300,:800])
-        ##
-        ### Filter based on area or other criteria
-        #filtered_objects = [obj for obj in objects if obj.area > 2]
-        #import matplotlib.pyplot as plt
-        #fig, ax = plt.subplots(figsize=(20, 5))
-        #ax.pcolormesh(CNs[:300,:800], cmap='gray')
-        #for obj in filtered_objects:
-        #    minr, minc, maxr, maxc = obj.bbox
-        #    ax.plot([minc, minc, maxc, maxc, minc], [minr, maxr, maxr, minr, minr], 'r', linewidth=2)
-        ##plt.gca().invert_yaxis()
-
-        #plt.show()
-
-
-
         allclouds = fc.get_clouds_filtered(Scc_Dcc, input_radar, input_cloudnet , input_temperature)
 
         return allclouds, Scc_Dcc
