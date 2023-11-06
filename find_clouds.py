@@ -100,12 +100,26 @@ def detect_clouds(lab_image , model_temp, height, target_classification_new, clo
         condition_mixed    = (LCL < base_h[i] < t0_idx)     & ( top_h[i] >= t0_idx)
 
         if condition_Str:
+           # fall streaks are usually cover more pixels in the height dimension compared to the number of pixels in the time dimension
+           box = cloudnet[length_t1[i]:length_t2[i],height_t1[i]:height_t2[i]]
+           ratio = box.shape[0]/box.shape[1]
+
+
            # Check if Stratus (Str) are fallstreaks
-           if drizzle == 100:
-               condition_Str = False
-               condition_mixed = True
+           if top_h[i] < 3000:
+               if size[i] < 5:
+                   if ratio > 1.5:
+                       condition_Str == True
+                   if ratio <= 1.5:
+                       condition_Str = False
+                       condition_mixed = True
            else:
-               condition_Str = True
+               if drizzle == 100:
+                   if ratio <= 1.5:
+                       condition_Str = False
+                       condition_mixed = True
+               else:
+                   condition_Str = True
 
         # Append output labels based on classification
         output_Scc.append(input_labels[i] * condition_Scc)
