@@ -74,7 +74,10 @@ def detect_clouds(lab_image , model_temp, height, target_classification_new, clo
     # Loop through clouds and classify them
     for i in range(len(base_h)):
         t0_idx = np.nanmean(model_temp[length_t1[i]:length_t2[i]],0) - 273.15
+        t0_idx = ma.masked_invalid(t0_idx).filled(-1)
+
         t0_idx = height[ np.where(t0_idx < 0)[0][0] ]
+        t0_idx = ma.masked_where(t0_idx ==0, t0_idx).filled(123)
 
         cbh1 = np.count_nonzero(ma.masked_invalid(cbh_1[length_t1[i]:length_t2[i]]))
         cbh2 = np.count_nonzero(ma.masked_invalid(cbh_2[length_t1[i]:length_t2[i]]))
@@ -221,7 +224,11 @@ def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classifi
     # Loop through clouds and classify them
     for i in range(len(base_h)):
         t0_idx = np.nanmean(model_temp[length_t1[i]:length_t2[i]],0) - 273.15
+        t0_idx = ma.masked_invalid(t0_idx).filled(-1)
         t0_idx = height[ np.where(t0_idx < 0)[0][0] ]
+        t0_idx = ma.masked_where(t0_idx ==0, t0_idx).filled(123)
+
+
         target  = cloudnet[length_t1[i]:length_t2[i],height_t1[i]:height_t2[i]]
         target = ma.masked_where(target > 3, target).filled(0)
         drizzle = np.sum(target==2)*100/(ma.masked_where(target == 0, target ).compressed().shape[0])
@@ -357,10 +364,15 @@ def get_clouds_filtered(Scc_Dcc, radar_masked, target_classification_new , model
 
 def get_T0(model_temp, height):
     h0 = []
-    model_temp = ma.masked_invalid(model_temp).filled(123)
+    model_temp = ma.masked_invalid(model_temp).filled(1)
     for i in range(len(model_temp)):
 
-        idx = np.where(model_temp[i]-273.15 <=0)[0][0]
-        h0.append(height[idx])
+        idx = np.where(model_temp[i]-273.15 <0)[0][0]
+        if idx == 0:
+            h0.append(height[123])
+        else:
+            h0.append(height[idx])
     return h0
+
+
 

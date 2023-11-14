@@ -8,5 +8,6 @@ cloud_processor = CloudProcessor(file_path = input_data,
                                  dataset_path = output_data,
                                  plot_path =  plot_data)
 cloud_processor.create_cloud_dataset(dataset_path = output_data,
-                                     plot=True)
+                                     plot=True,
+                                     radar_data = False)
 

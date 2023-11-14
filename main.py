@@ -12,8 +12,14 @@ class CloudProcessor:
         self.plot_path = plot_path
         self.dataset_path = dataset_path
 
-    def filter_out_haze_echos(self, input_cloudnet, input_radar):
-        radar        = ma.masked_invalid(input_radar).mask
+    def filter_out_haze_echos(self, input_cloudnet, input_radar = None):
+        radar  = ma.masked_where(input_cloudnet > 7,input_cloudnet).filled(0)#.mask
+        radar  = ma.masked_where(radar==0, radar).mask
+
+        if input_radar is not None:
+            radar        = ma.masked_invalid(input_radar).mask
+
+
         haze_mask    = ma.masked_where(input_cloudnet > 10, input_cloudnet).mask#.astype(int)
         radar_masked = ma.masked_where(haze_mask == True,radar ).filled(True)
         return radar_masked
@@ -110,9 +116,12 @@ class CloudProcessor:
 
         return allclouds, Scc_Dcc
 
-    def create_cloud_dataset(self, dataset_path, plot=False):
+    def create_cloud_dataset(self, dataset_path, radar_data = False, plot=False):
         data, target_classification_new, target_classification_old, time, Tw, height, Ze, cbh = self.open_dataset(self.file_path)
-        radar_masked = self.filter_out_haze_echos(target_classification_new, Ze)
+        radar_masked = self.filter_out_haze_echos(target_classification_new)
+
+        if radar_data:
+           radar_masked = self.filter_out_haze_echos(target_classification_new, Ze)
 
         allclouds, Scc_Dcc  = self.categorize_radar_pixels(radar_masked, Tw, height, cbh, target_classification_new)
         h0 = fc.get_T0(model_temp=Tw, height=height)
