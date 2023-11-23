@@ -27,6 +27,7 @@ class CloudProcessor:
     def open_dataset(self, input_path):
         data =  xr.open_dataset(input_path, engine='netcdf4')
         time = data.time
+
         ####### Dimension needs to be reduced when height dimension can not be divided by 4 ##########
         if data.target_classification_new.data.shape[1] % 4 == 0:
             target_classification_new = data.target_classification_new.data[:,:]
@@ -131,23 +132,67 @@ class CloudProcessor:
             fig1, ax1 = pc.plot_clouds(start1, end1, allclouds, time, height, h0, cbh, self.plot_path)
             fig2, ax2 = pc.plot_clouds(start2, end2, allclouds, time, height, h0, cbh, self.plot_path)
 
+
+
         ds = xr.Dataset({
-            'target_classification': xr.DataArray(
-                data=target_classification_old,
-                dims=['time', 'height'],
-                coords={'time': time, 'height': height},
-                attrs={
-                    'long_name': 'Cloudnet target classification (old)',
-                    'units': ''
-                }
+        'target_classification': xr.DataArray(
+               data   = target_classification_old,   # enter data here
+               dims   = ['time', 'height'],
+               coords = {'time': time, 'height': height},
+               attrs  = {
+                   'long_name': 'Cloudnet target classification (old)',
+                   'units'     : ''
+                   }
+               ),
+
+        'target_classification_new': xr.DataArray(
+                    data   = target_classification_new,   # enter data here
+                    dims   = ['time', 'height'],
+                    coords = {'time': time, 'height': height},
+                    attrs  = {
+                        'long_name': f'Cloudnet target classification (new)',
+                        'units'     : f'Probability > 0.6 are Haze echos'
+                        }
+                    ),
+
+        'Tw': xr.DataArray(
+                    data   = Tw[:,:],   # enter data here
+                    dims   = ['time', 'height'],
+                    coords = {'time': time, 'height': height},
+                    attrs  = {
+                        'long_name': f'Wet bulb temperature (ECMWF)',
+                        'units'     :f'K'
+                        },
             ),
-            # Add other data variables similarly
-        }, attrs={
-            'description': 'Cloudnet target classification with the new classification including Haze echos',
-            'longitude': '-59.50',
-            'latitude': '13.07',
-            'reference': 'Johanna Roschke, jr55riqa@studserv.uni-leipzig.de'
-        })
+
+
+        'Scc_Dcc': xr.DataArray(
+                    data   = Scc_Dcc.T[:,:],   # enter data here
+                    dims   = ['time', 'height'],
+                    coords = {'time': time, 'height': height[:]},
+                    attrs  = {
+                        'long_name': f'Barbados cloud types: Shallow Cumulus (Scc) : 1; Deeper cumulus (Dcc) : 2; Deeper cumulus with stratiform edges (Dcc_Str) : 3; Cumulu Nimbus (CNs) : 5; Stratus (Str) : 4; Cirrus (Cir) : 6; No category (Nc): 7 ',
+                        'units'     :f''
+                        },
+            ),
+         'clouds': xr.DataArray(
+                    data   = allclouds.T[:,:],   # enter data here
+                    dims   = ['time', 'height'],
+                    coords = {'time': time, 'height': height[:]},
+                    attrs  = {
+                        'long_name': f'Cloud types; Clear Sky: 0, Cold Clouds: 1, Warm clouds:2, Warm clouds with cloud base below 1km: 3',
+                        'units'     :f''
+                        },
+            ),
+
+
+        },
+
+        attrs={'description': 'Cloudnet target classification with the new classification inlcuding Haze echos',
+               'longitude': '-59.50',
+               'latitude' : '13.07',
+               'reference': 'Johanna Roschke, jr55riqa@studserv.uni-leipzig.de'}
+        )
 
         ymd = utils.get_date_str(time)
         ds.to_netcdf(self.dataset_path + f'{ymd}_barbados_clouds.nc')
