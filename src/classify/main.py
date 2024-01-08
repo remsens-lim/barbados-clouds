@@ -8,15 +8,22 @@ from skimage import measure
 import find_clouds as fc
 import numpy.ma as ma
 import utils
+import os
 import plot_clouds as pc
 class CloudProcessor:
-    def __init__(self, file_path, dataset_path, platform , plot_path=None ):
-        self.file_path = file_path
+    def __init__(self, classification_path,categorization_path, dataset_path, platform , plot_path=None ):
+        self.classification_path = classification_path
+        self.categorization_path = categorization_path
         self.plot_path = plot_path
         self.dataset_path = dataset_path
         self.platform = platform
 
     def filter_out_haze_echos(self, input_cloudnet, input_radar = None):
+        '''
+        :param input_cloudnet: Cloudnet target classification
+        :param input_radar: masked array from radar reflectivity data
+        :return:
+        '''
         radar  = ma.masked_where(input_cloudnet > 7,input_cloudnet).filled(0)#.mask
         radar  = ma.masked_where(radar==0, radar).mask
 
@@ -28,28 +35,29 @@ class CloudProcessor:
         radar_masked = ma.masked_where(haze_mask == True,radar ).filled(True)
         return radar_masked
 
-    def open_dataset(self, input_path):
-        data =  xr.open_dataset(input_path, engine='netcdf4')
-        time = data.time
+    def open_dataset(self, classification_path,categorization_path):
+        cl_data =  xr.open_dataset(classification_path, engine='netcdf4')
+        ca_data =  xr.open_dataset(categorization_path, engine='netcdf4')
+        time = cl_data.time
 
         ####### Dimension needs to be reduced when height dimension can not be divided by 4 ##########
-        if data.target_classification_new.data.shape[1] % 4 == 0:
-            target_classification_new = data.target_classification_new.data[:,:]
-            target_classification_old = data.target_classification.data[:,:]
-            cbh    = data.cbh.data
-            Tw     = data.Tw.data[:,:]
-            height = data.height.data[:]
-            Ze     = data.Ze.data[:,:]
+        if cl_data.target_classification_haze_echos.data.shape[1] % 4 == 0:
+            target_classification_new = cl_data.target_classification_haze_echos.data[:,:]
+            target_classification_old = cl_data.target_classification.data[:,:]
+            cbh    = cl_data.cloud_base_height_agl.data
+            Tw     = ca_data.Tw.data[:,:]
+            height = ca_data.height.data[:]
+            Ze     = ca_data.Z.data[:,:]
         else:
-            number = data.target_classification_new.data.shape[1]
-            target_classification_new = data.target_classification_new.data[:,:- (number % 4)]
-            target_classification_old = data.target_classification.data[:,:- (number % 4)]
-            cbh    = data.cbh.data
-            Tw     = data.Tw.data[:,:- (number % 4)]
-            height = data.height.data[:- (number % 4)]
-            Ze     = data.Ze.data[:,:- (number % 4)]
+            number = cl_data.target_classification_haze_echos.data.shape[1]
+            target_classification_new = cl_data.target_classification_haze_echos.data[:,:- (number % 4)]
+            target_classification_old = cl_data.target_classification.data[:,:- (number % 4)]
+            cbh    = cl_data.cloud_base_height_agl.data
+            Tw     = ca_data.Tw.data[:,:- (number % 4)]
+            height = ca_data.height.data[:- (number % 4)]
+            Ze     = ca_data.Z.data[:,:- (number % 4)]
         ##### Filter out Haze echos #####
-        return  data, target_classification_new,  target_classification_old, time, Tw, height, Ze, cbh
+        return  cl_data, ca_data, target_classification_new,  target_classification_old, time, Tw, height, Ze, cbh
 
 
     def categorize_radar_pixels(self, input_radar, input_temperature, input_height, input_cloud_base_height, input_cloudnet):
@@ -136,7 +144,8 @@ class CloudProcessor:
 
 
     def create_cloud_dataset(self, dataset_path, radar_data = False, plot=False):
-        data, target_classification_new, target_classification_old, time, Tw, height, Ze, cbh = self.open_dataset(self.file_path)
+        cl_data, ca_data, target_classification_new, target_classification_old, time, Tw, height, Ze, cbh = self.open_dataset(self.classification_path,
+                                                                                                                  self.categorization_path)
         radar_masked = self.filter_out_haze_echos(target_classification_new)
 
         if radar_data:
@@ -152,7 +161,12 @@ class CloudProcessor:
         time_steps_value = int(dict_clouds['time steps'])
         dict_clouds['time steps'] = time_steps_value
 
-        utils.append_to_excel(path_to_excel='/barbados-clouds/data/cloud_objects.xlsx',
+        # Get the path of the current script
+        current_script_path = os.path.dirname(os.path.abspath(__file__))
+        # Construct the relative path to the data folder
+        data_folder = os.path.join(current_script_path, '../..', 'data/cloud_objects.xlsx')
+        print(dict_clouds)
+        utils.append_to_excel(path_to_excel=data_folder,
                               date = df_idx,
                               warm_cloud_column = dict_clouds['Warm clouds'],
                               trade_cu_column = dict_clouds['Trade wind cumuli'],
