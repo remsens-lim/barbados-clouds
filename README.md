@@ -49,7 +49,6 @@ The Cloudnet target classification for haze echoes can be processed using the **
    
 2. Define the file paths for your input, output, and plot data:
    ```python
-      
       input_classification = 'Path to Cloudnet classification'
       input_categorization = 'Path to Cloudnet categorization'
       output_data = 'Path to output dataset'
