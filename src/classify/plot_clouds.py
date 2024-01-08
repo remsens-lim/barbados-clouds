@@ -63,7 +63,7 @@ def plot_clouds(start, end, allclouds_, time,  height, h0, cbh, plot_path):
     #cbar.ax.tick_params(axis='both', which='minor', width=2, length=3)
 
 
-    custom_legend_item = matplotlib.lines.Line2D([0], [0], color='black', linewidth=2, label='cloud base height')
+    custom_legend_item = matplotlib.lines.Line2D([0], [0], color='black', linewidth=2, label='cloud base height (CBH)')
 
     # Add the custom legend item to the legend
     fig.legend(loc = (0.64, 0.78), handles=[custom_legend_item],fontsize = 16)

@@ -52,6 +52,7 @@ def detect_clouds(lab_image , model_temp, height, target_classification_new, clo
     size         = table['area']
     height_t2 = table['bbox-2']
     height_t1 = table['bbox-0']
+    cloud_time = length_t2-length_t1
 
     cloudnet = target_classification_new
     cbh = cloud_base_height
@@ -70,14 +71,18 @@ def detect_clouds(lab_image , model_temp, height, target_classification_new, clo
     output_Cir = []
     output_CNs = []
     output_mixed = []
-
+    output_warm_cloud_time_steps     = []
+    output_trade_wind_cu_time_steps  = []
+    output_mixed_and_cold_time_steps = []
+    output_no_class_time_steps       = []
     # Loop through clouds and classify them
     for i in range(len(base_h)):
+        #print(length_t2[i]-length_t1[i])
         t0_idx = np.nanmean(model_temp[length_t1[i]:length_t2[i]],0) - 273.15
-        t0_idx = ma.masked_invalid(t0_idx).filled(-1)
-
-        t0_idx = height[ np.where(t0_idx < 0)[0][0] ]
-        t0_idx = ma.masked_where(t0_idx ==0, t0_idx).filled(123)
+        t0_idx = ma.masked_invalid(t0_idx).filled(-10)
+        #print(t0_idx)
+        t0_idx = height[ np.where(t0_idx < 0)[0][0] ] # relax or choose 0
+        t0_idx = ma.masked_where(t0_idx == 0, t0_idx).filled(123)
 
         cbh1 = np.count_nonzero(ma.masked_invalid(cbh_1[length_t1[i]:length_t2[i]]))
         cbh2 = np.count_nonzero(ma.masked_invalid(cbh_2[length_t1[i]:length_t2[i]]))
@@ -135,6 +140,29 @@ def detect_clouds(lab_image , model_temp, height, target_classification_new, clo
         output_nc.append(input_labels[i]  * no_class)
         output_CNs.append(input_labels[i] * condition_CNs)
 
+        ###################################################################
+        if condition_Str :
+            output_warm_cloud_time_steps.append(cloud_time[i])
+
+        elif condition_Str_Cu :
+            output_warm_cloud_time_steps.append(cloud_time[i])
+
+        elif condition_Dcc :
+            output_warm_cloud_time_steps.append(cloud_time[i])
+            output_trade_wind_cu_time_steps.append(cloud_time[i])
+        elif condition_Scc:
+            output_warm_cloud_time_steps.append(cloud_time[i])
+            output_trade_wind_cu_time_steps.append(cloud_time[i])
+        elif condition_Cir:
+            output_mixed_and_cold_time_steps.append(cloud_time[i])
+        elif condition_CNs:
+            output_mixed_and_cold_time_steps.append(cloud_time[i])
+        elif condition_mixed:
+            output_mixed_and_cold_time_steps.append(cloud_time[i])
+        elif no_class :
+            output_no_class_time_steps.append(cloud_time[i])
+
+
 
     output_Scc = np.array(output_Scc)
     output_Dcc = np.array(output_Dcc)
@@ -176,7 +204,17 @@ def detect_clouds(lab_image , model_temp, height, target_classification_new, clo
     Ncc = np.where(Ncc == 0, Ncc, 7)
     mix = np.where(mix == 0, mix, 8)
 
-    return Scc , Dcc , Str , Str_Cu, CNs ,Cir ,Ncc ,mix
+
+
+
+
+    dict_cloud_clear_sky = {'Warm clouds': output_warm_cloud_time_steps    ,
+                            'Trade wind cumuli': output_trade_wind_cu_time_steps ,
+                            'Cold and mixed phase clouds': output_mixed_and_cold_time_steps,
+                            'No class clouds': output_no_class_time_steps      ,
+                            'time steps' :[cloudnet.shape[0]/2]
+                            }
+    return Scc , Dcc , Str , Str_Cu, CNs ,Cir ,Ncc ,mix, dict_cloud_clear_sky
 
 
 def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classification_new):
@@ -195,7 +233,7 @@ def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classifi
     height_t2 = table['bbox-2']
     height_t1 = table['bbox-0']
 
-
+    cloud_time = length_t2-length_t1
     # Initialize empty lists for output labels
     output_Scc = []
 
@@ -208,7 +246,10 @@ def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classifi
     output_CNs = []
     output_mixed = []
     output_fall_streaks = []
-
+    output_warm_cloud_time_steps     = []
+    output_trade_wind_cu_time_steps  = []
+    output_mixed_and_cold_time_steps = []
+    output_no_class_time_steps       = []
 
     cloudnet = target_classification_new
     cdrizzle = ma.masked_where(target_classification_new > 4,target_classification_new).filled(0)
@@ -223,9 +264,10 @@ def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classifi
 
     # Loop through clouds and classify them
     for i in range(len(base_h)):
+        #print(length_t2, length_t1)
         t0_idx = np.nanmean(model_temp[length_t1[i]:length_t2[i]],0) - 273.15
-        t0_idx = ma.masked_invalid(t0_idx).filled(-1)
-        t0_idx = height[ np.where(t0_idx < 0)[0][0] ]
+        t0_idx = ma.masked_invalid(t0_idx).filled(-10)
+        t0_idx = height[ np.where(t0_idx < 0)[0][0] ]# relax or choose 0
         t0_idx = ma.masked_where(t0_idx ==0, t0_idx).filled(123)
 
 
@@ -290,6 +332,28 @@ def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classifi
         output_nc.append(input_labels[i]  * no_class)
         output_CNs.append(input_labels[i] * condition_CNs)
         output_fall_streaks.append(input_labels[i]* condition_fall_streaks)
+        ###################################################################
+        if condition_Str :
+            output_warm_cloud_time_steps.append(cloud_time[i])
+
+        elif condition_Str_Cu :
+            output_warm_cloud_time_steps.append(cloud_time[i])
+
+        elif condition_Dcc :
+            output_warm_cloud_time_steps.append(cloud_time[i])
+            output_trade_wind_cu_time_steps.append(cloud_time[i])
+        elif condition_Scc:
+            output_warm_cloud_time_steps.append(cloud_time[i])
+            output_trade_wind_cu_time_steps.append(cloud_time[i])
+        elif condition_Cir:
+            output_mixed_and_cold_time_steps.append(cloud_time[i])
+        elif condition_CNs:
+            output_mixed_and_cold_time_steps.append(cloud_time[i])
+        elif condition_mixed:
+            output_mixed_and_cold_time_steps.append(cloud_time[i])
+        elif no_class :
+            output_no_class_time_steps.append(cloud_time[i])
+
 
 
     output_Scc = np.array(output_Scc)
@@ -332,7 +396,13 @@ def detect_NCs(lab_image , model_temp, height, cloud_base_height,target_classifi
     mix = np.where(mix == 0, mix, 8)
     fall_streaks = np.where(fall_streaks == 0, fall_streaks, 5)
 
-    return Scc , Dcc , Str , Str_Cu, CNs ,Cir ,Ncc ,mix, fall_streaks
+    dict_cloud_clear_sky = {'Warm clouds': output_warm_cloud_time_steps    ,
+                            'Trade wind cumuli': output_trade_wind_cu_time_steps ,
+                            'Cold and mixed phase clouds': output_mixed_and_cold_time_steps,
+                            'No class clouds': output_no_class_time_steps      ,
+                            'time steps' :[cloudnet.shape[0]/2]
+                            }
+    return Scc , Dcc , Str , Str_Cu, CNs ,Cir ,Ncc ,mix, fall_streaks, dict_cloud_clear_sky
 
 
 def get_clouds_filtered(Scc_Dcc, radar_masked, target_classification_new , model_temp):

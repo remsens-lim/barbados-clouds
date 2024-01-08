@@ -30,7 +30,7 @@ is marked by the red line.*
 # Installation
 1. The package can be installed via pip:
    ```
-    python -m pip install git@github.com:remsens-lim/barbados-clouds.git
+    python -m pip install git+https://github.com/remsens-lim/barbados-clouds
    ```
 2. Install the package
    ```sh
@@ -65,6 +65,6 @@ specifying the input and output paths:
 <p align="right">(<a href="#top">back to top</a>)</p>
 
 ## License
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the GPL-3.0 License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#top">back to top</a>)</p>

@@ -1,4 +1,7 @@
+import datetime
+import openpyxl
 import numpy as np
+import pandas as pd
 import xarray as xr
 from scipy import ndimage
 from skimage import measure
@@ -7,10 +10,11 @@ import numpy.ma as ma
 import utils
 import plot_clouds as pc
 class CloudProcessor:
-    def __init__(self, file_path, dataset_path, plot_path=None):
+    def __init__(self, file_path, dataset_path, platform , plot_path=None ):
         self.file_path = file_path
         self.plot_path = plot_path
         self.dataset_path = dataset_path
+        self.platform = platform
 
     def filter_out_haze_echos(self, input_cloudnet, input_radar = None):
         radar  = ma.masked_where(input_cloudnet > 7,input_cloudnet).filled(0)#.mask
@@ -65,11 +69,11 @@ class CloudProcessor:
 
 
 
-        Scc , Dcc , Str , Str_Cu, CNs ,Cir ,Ncc ,mix = fc.detect_clouds(lab_image ,
-                                                                     input_temperature,
-                                                                     input_height,
-                                                                     input_cloudnet,
-                                                                     input_cloud_base_height)
+        Scc , Dcc , Str , Str_Cu, CNs ,Cir ,Ncc ,mix, dict_cloud_clear_sky = fc.detect_clouds(lab_image ,
+                                                                                             input_temperature,
+                                                                                             input_height,
+                                                                                             input_cloudnet,
+                                                                                             input_cloud_base_height)
 
 
 
@@ -77,11 +81,24 @@ class CloudProcessor:
 
         ## CNs clouds are often connected to Scc , Dcc
         CNs_labeled = fc.separate_connected_clouds(CNs)
-        _2_Scc , _2_Dcc , _2_Str , _2_Str_Cu, _2_CNs ,_2_Cir ,_2_Ncc ,_2_mix,fall_streaks = fc.detect_NCs(CNs_labeled ,
-                                                                                                       input_temperature,
-                                                                                                       input_height,
-                                                                                                       input_cloud_base_height,
-                                                                                                       input_cloudnet)
+        _2_Scc , _2_Dcc , _2_Str , _2_Str_Cu, _2_CNs ,_2_Cir ,_2_Ncc ,_2_mix,fall_streaks,_dict_cloud_clear_sky = fc.detect_NCs(CNs_labeled ,
+                                                                                                                                input_temperature,
+                                                                                                                                input_height,
+                                                                                                                                input_cloud_base_height,
+                                                                                                                               input_cloudnet)
+
+        # Loop through the keys and append the lists
+        for key in dict_cloud_clear_sky:
+            dict_cloud_clear_sky[key].extend(_dict_cloud_clear_sky[key])
+
+        # Calculate the sum for each list in the dictionary
+        sums_dict = {}
+        for key, value in dict_cloud_clear_sky.items():
+            list_sum = sum(value)
+            sums_dict[key] = list_sum
+
+        # Now sums_dict contains the sum of values for each list
+
 
         CNs = _2_CNs+_2_Cir+_2_mix+ fall_streaks + mix
         CNs = np.where(CNs == 0, CNs, 5)
@@ -115,7 +132,8 @@ class CloudProcessor:
 
         allclouds = fc.get_clouds_filtered(Scc_Dcc, input_radar, input_cloudnet , input_temperature)
 
-        return allclouds, Scc_Dcc
+        return allclouds, Scc_Dcc, sums_dict
+
 
     def create_cloud_dataset(self, dataset_path, radar_data = False, plot=False):
         data, target_classification_new, target_classification_old, time, Tw, height, Ze, cbh = self.open_dataset(self.file_path)
@@ -124,9 +142,24 @@ class CloudProcessor:
         if radar_data:
            radar_masked = self.filter_out_haze_echos(target_classification_new, Ze)
 
-        allclouds, Scc_Dcc  = self.categorize_radar_pixels(radar_masked, Tw, height, cbh, target_classification_new)
+        allclouds, Scc_Dcc , dict_clouds = self.categorize_radar_pixels(radar_masked, Tw, height, cbh, target_classification_new)
         h0 = fc.get_T0(model_temp=Tw, height=height)
         start1, end1, start2, end2 = utils.get_time_interval(time)
+
+        dates = pd.to_datetime(time[0].data)
+        df_idx = datetime.date(dates.year, dates.month, dates.day)
+        # Convert 'time steps' value to integer
+        time_steps_value = int(dict_clouds['time steps'])
+        dict_clouds['time steps'] = time_steps_value
+
+        utils.append_to_excel(path_to_excel='/barbados-clouds/data/cloud_objects.xlsx',
+                              date = df_idx,
+                              warm_cloud_column = dict_clouds['Warm clouds'],
+                              trade_cu_column = dict_clouds['Trade wind cumuli'],
+                              cold_cloud_column = dict_clouds['Cold and mixed phase clouds'],
+                              no_cloud_column = dict_clouds['No class clouds'],
+                              time_steps_column= dict_clouds['time steps'])
+
 
         if plot:
             fig1, ax1 = pc.plot_clouds(start1, end1, allclouds, time, height, h0, cbh, self.plot_path)
@@ -195,5 +228,5 @@ class CloudProcessor:
         )
 
         ymd = utils.get_date_str(time)
-        ds.to_netcdf(self.dataset_path + f'{ymd}_barbados_clouds.nc')
+        ds.to_netcdf(self.dataset_path + f'{ymd}_'+self.platform+'_clouds.nc')
 
