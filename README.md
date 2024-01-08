@@ -40,23 +40,28 @@ is marked by the red line.*
 
 ## Usage
 
-As input sources the **Cloudnet target classification** and **Cloudnet target categorization** products are mandatory.
-
+As input sources the **Cloudnet target classification** (including the Cloudnet haze echo product) and **Cloudnet target categorization** products are mandatory.
+The Cloudnet target classification for haze echoes can be processed using the **cloudnet-haze-echo** package: https://github.com/remsens-lim/cloudnet-haze-echoes/
 1. First, import the `CloudProcessor` class from the `main` module:
 
    ```python
-   from main import CloudProcessor
+   from src.main import CloudProcessor
    
 2. Define the file paths for your input, output, and plot data:
    ```python
-      input_data = 'PATH_TO_INPUT_DATA'
-      output_data = 'PATH_TO_OUTPUT_DATA'
-      plot_data = 'PATH_TO_PLOT_DATA'
+      
+      input_classification = 'Path to Cloudnet classification'
+      input_categorization = 'Path to Cloudnet categorization'
+      output_data = 'Path to output dataset'
+      plot_data   = 'Path to output figure'
    ```
 3. Create an instance of the CloudProcessor class, 
 specifying the input and output paths:
    ```python
-   cloud_processor = CloudProcessor(file_path=input_data, dataset_path=output_data, plot_path=plot_data)
+   cloud_processor = CloudProcessor(input_classification = input_classification,
+                                    input_categorization = input_categorization,
+                                    dataset_path=output_data, 
+                                    plot_path=plot_data)
    ```
 4. Generate the cloud dataset using the create_cloud_dataset method. You can also enable plotting by setting the plot parameter to True:
    ```python
