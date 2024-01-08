@@ -1,6 +1,6 @@
 # barbados-clouds
 
-Object based cloud detection and classification for cloud radar measurments over the Barbados Cloud Observatory (BCO).
+Object-based cloud detection and classification for cloud radar measurements over the Barbados Cloud Observatory (BCO).
 
 # Table of Contents
 - [Introduction](#introduction)
